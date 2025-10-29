@@ -1,0 +1,69 @@
+Structure du dossier
+Le num‚ro de s‚rie du volume est 56A4-182A
+C:.
+|   arborescence.txt
+|   
+\---project
+    |   .env
+    |   .gitignore
+    |   eslint.config.js
+    |   index.html
+    |   package-lock.json
+    |   package.json
+    |   postcss.config.js
+    |   README.md
+    |   tailwind.config.js
+    |   tsconfig.app.json
+    |   tsconfig.json
+    |   tsconfig.node.json
+    |   vite.config.ts
+    |   
+    +---.bolt
+    |       config.json
+    |       prompt
+    |       
+    +---dist
+    |   |   index.html
+    |   |   _redirects
+    |   |   
+    |   \---assets
+    |           index-BwTE7Fgi.js
+    |           index-CYm4bxGV.css
+    |           
+    +---src
+    |   |   App.tsx
+    |   |   index.css
+    |   |   main.tsx
+    |   |   vite-env.d.ts
+    |   |   
+    |   +---components
+    |   |   +---Admin
+    |   |   |       AdminPanel.tsx
+    |   |   |       
+    |   |   +---Auth
+    |   |   |       AuthPage.tsx
+    |   |   |       
+    |   |   +---FileManager
+    |   |   |       FileManager.tsx
+    |   |   |       
+    |   |   +---Layout
+    |   |   |       Header.tsx
+    |   |   |       MainLayout.tsx
+    |   |   |       
+    |   |   \---PaintEditor
+    |   |           PaintEditor.tsx
+    |   |           PropertiesPanel.tsx
+    |   |           Toolbar.tsx
+    |   |           
+    |   +---lib
+    |   |       database.types.ts
+    |   |       supabase.ts
+    |   |       
+    |   \---stores
+    |           authStore.ts
+    |           fileStore.ts
+    |           
+    \---supabase
+        \---migrations
+                20251023183133_create_initial_schema.sql
+                

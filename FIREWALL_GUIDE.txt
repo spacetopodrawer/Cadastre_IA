@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════════════
+CONFIGURATION FIREWALL - MÉTHODE SIMPLE
+═══════════════════════════════════════════════════════════
+
+ÉTAPE 1: Ouvrir le Pare-feu Windows
+────────────────────────────────────
+1. Appuyer sur Windows + R
+2. Taper: wf.msc
+3. Appuyer sur Entrée
+
+Une fenêtre s'ouvre: "Pare-feu Windows Defender avec sécurité avancée"
+
+ÉTAPE 2: Créer la Règle pour le Port 5000
+─────────────────────────────────────────
+1. Dans le panneau de gauche, cliquer sur "Règles de trafic entrant"
+2. Dans le panneau de droite, cliquer sur "Nouvelle règle..."
+3. Sélectionner "Port" → Cliquer "Suivant"
+4. Sélectionner "TCP"
+5. Dans "Ports locaux spécifiques", taper: 5000
+6. Cliquer "Suivant"
+7. Sélectionner "Autoriser la connexion"
+8. Cliquer "Suivant"
+9. COCHER les 3 cases:
+   ☑ Domaine
+   ☑ Privé
+   ☑ Public
+10. Cliquer "Suivant"
+11. Dans "Nom", taper: Cadastre_IA Backend
+12. Cliquer "Terminer"
+
+ÉTAPE 3: Créer la Règle pour le Port 5173 (Optionnel)
+─────────────────────────────────────────────────────
+Répéter les étapes 2 à 12, mais:
+- À l'étape 5, taper: 5173
+- À l'étape 11, taper: Cadastre_IA Frontend
+
+ÉTAPE 4: Vérifier les Règles
+─────────────────────────────
+1. Dans "Règles de trafic entrant", défiler
+2. Chercher "Cadastre_IA Backend"
+3. Vérifier que:
+   - Profil = Tous
+   - Activé = Oui
+   - Action = Autoriser
+
+✅ TERMINÉ ! Les ports sont maintenant ouverts.
+
+═══════════════════════════════════════════════════════════
+Sauvegardé le: 26/10/2025 13:47
+Chemin: C:\Cadastre_IA\FIREWALL_GUIDE.txt
