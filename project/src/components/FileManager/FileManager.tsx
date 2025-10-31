@@ -1,17 +1,92 @@
-import { useEffect, useState } from 'react';
-import { useFileStore } from '../../stores/fileStore';
-import { Plus, FileImage, Trash2, Clock } from 'lucide-react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useFileStore } from '$stores/fileStore';
+import { Plus, FileImage, Trash2, Clock, RefreshCw, AlertCircle, CheckCircle, WifiOff, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { syncStore, type SyncStatus, type SyncedFile } from '$components/SyncManager';
+import { Button } from '$components/ui/button';
+import { cn } from '$lib/utils';
+
+// Composant pour afficher l'icône de statut
+function SyncStatusIcon({ status, className = '' }: { status: SyncStatus; className?: string }) {
+  const iconProps = { className: cn('w-4 h-4', className) };
+  
+  const icons = {
+    synced: <CheckCircle {...iconProps} className={cn(iconProps.className, 'text-green-500')} />,
+    pending: <RefreshCw {...iconProps} className={cn(iconProps.className, 'text-yellow-500 animate-spin')} />,
+    conflict: <AlertCircle {...iconProps} className={cn(iconProps.className, 'text-red-500')} />,
+    offline: <WifiOff {...iconProps} className={cn(iconProps.className, 'text-gray-400')} />,
+  };
+
+  return icons[status] || null;
+}
 
 export function FileManager() {
   const navigate = useNavigate();
   const { files, loading, fetchFiles, createFile, deleteFile } = useFileStore();
   const [showNewFileDialog, setShowNewFileDialog] = useState(false);
   const [newFileName, setNewFileName] = useState('');
+  const [showSyncPanel, setShowSyncPanel] = useState(true);
+  const [syncStatus, setSyncStatus] = useState<Record<string, SyncedFile>>({});
 
+  // Mettre à jour le statut local quand le store change
   useEffect(() => {
-    fetchFiles();
-  }, [fetchFiles]);
+    const unsubscribe = syncStore.subscribe(($syncStore) => {
+      const statusMap = $syncStore.reduce((acc, file) => {
+        acc[file.id] = file;
+        return acc;
+      }, {} as Record<string, SyncedFile>);
+      setSyncStatus(statusMap);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Ajouter les fichiers au suivi de synchronisation
+  useEffect(() => {
+    if (!files.length) return;
+
+    files.forEach(file => {
+      // Ne pas réinitialiser le statut s'il existe déjà
+      if (!syncStore.get().some(f => f.id === file.id)) {
+        syncStore.addFile({
+          id: file.id,
+          name: file.name,
+          type: 'document',
+          status: 'synced',
+          lastSynced: new Date(file.updatedAt),
+          metadata: {
+            path: file.path,
+            size: file.size,
+            type: file.type
+          }
+        });
+      }
+    });
+  }, [files]);
+
+  // Fonction pour forcer la synchronisation d'un fichier
+  const handleSyncFile = useCallback(async (fileId: string) => {
+    try {
+      syncStore.updateStatus(fileId, 'pending', 'Synchronisation en cours...');
+      
+      // Simulation de la synchronisation
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mettre à jour avec les données du serveur
+      const file = files.find(f => f.id === fileId);
+      if (file) {
+        syncStore.updateStatus(fileId, 'synced', 'Synchronisation réussie', {
+          lastModified: new Date(file.updatedAt),
+          size: file.size
+        });
+      }
+    } catch (error) {
+      syncStore.updateStatus(fileId, 'conflict', 'Erreur de synchronisation');
+      console.error('Erreur lors de la synchronisation:', error);
+      console.error('Erreur de synchronisation:', error);
+      syncStore.updateStatus(fileId, 'conflict', 'Erreur de synchronisation');
+    }
+  }, []);
 
   const handleCreateFile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +96,16 @@ export function FileManager() {
       const file = await createFile(newFileName, { objects: [], version: '5.3.0' });
       setShowNewFileDialog(false);
       setNewFileName('');
+      
+      // Ajouter le nouveau fichier au suivi de synchronisation
+      syncStore.addFile({
+        id: file.id,
+        name: file.name,
+        type: 'document',
+        status: 'synced',
+        lastModified: new Date(file.updatedAt)
+      });
+      
       navigate(`/editor/${file.id}`);
     } catch (error) {
       console.error('Error creating file:', error);
@@ -31,6 +116,8 @@ export function FileManager() {
     if (confirm(`Êtes-vous sûr de vouloir supprimer "${name}" ?`)) {
       try {
         await deleteFile(id);
+        // Retirer le fichier du suivi de synchronisation
+        syncStore.removeFile(id);
       } catch (error) {
         console.error('Error deleting file:', error);
       }
@@ -48,147 +135,137 @@ export function FileManager() {
     }).format(date);
   };
 
-  if (loading && files.length === 0) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-500">Chargement des fichiers...</div>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Mes Dessins</h1>
-            <p className="text-gray-600 mt-1">
-              {files.length} {files.length <= 1 ? 'fichier' : 'fichiers'}
-            </p>
-          </div>
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Gestionnaire de fichiers</h1>
+        <div className="flex gap-4">
+          <button
+            onClick={() => setShowSyncPanel(!showSyncPanel)}
+            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md transition-colors"
+          >
+            <RefreshCw size={16} />
+            {showSyncPanel ? 'Masquer la synchronisation' : 'Afficher la synchronisation'}
+          </button>
           <button
             onClick={() => setShowNewFileDialog(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors"
           >
-            <Plus className="w-5 h-5" />
-            Nouveau dessin
+            <Plus size={16} />
+            Nouveau fichier
           </button>
         </div>
+      </div>
 
+      {/* Panneau de synchronisation */}
+      {showSyncPanel && (
+        <div className="mb-6 p-4 bg-white rounded-lg shadow">
+          <h2 className="text-lg font-semibold mb-3">Synchronisation des fichiers</h2>
+          <SyncManager showOnly="all" showActions={true} />
+        </div>
+      )}
+
+      {/* Liste des fichiers */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium">Mes fichiers</h2>
+        </div>
+        
         {files.length === 0 ? (
-          <div className="text-center py-16">
-            <FileImage className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Aucun dessin pour le moment
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Commencez par créer votre premier dessin
-            </p>
-            <button
-              onClick={() => setShowNewFileDialog(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <Plus className="w-5 h-5" />
-              Créer un dessin
-            </button>
+          <div className="p-8 text-center text-gray-500">
+            <p>Aucun fichier trouvé. Créez votre premier fichier pour commencer.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <ul className="divide-y divide-gray-200">
             {files.map((file) => (
-              <div
-                key={file.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
-              >
-                <div
-                  onClick={() => navigate(`/editor/${file.id}`)}
-                  className="aspect-video bg-gray-100 flex items-center justify-center relative overflow-hidden"
-                >
-                  {file.thumbnail ? (
-                    <img
-                      src={file.thumbnail}
-                      alt={file.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <FileImage className="w-12 h-12 text-gray-400" />
-                  )}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all" />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-medium text-gray-900 truncate mb-1">
-                    {file.name}
-                  </h3>
-                  <div className="flex items-center text-xs text-gray-500 mb-3">
-                    <Clock className="w-3 h-3 mr-1" />
-                    {formatDate(file.updated_at)}
+              <li key={file.id} className="hover:bg-gray-50 transition-colors">
+                <div className="px-4 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0">
+                      <FileImage className="text-blue-500" size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{file.name}</span>
+                        <SyncStatusIcon status={syncStore.getFileStatus(file.id) || 'synced'} />
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Modifié le {formatDate(file.updatedAt)}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/editor/${file.id}`);
-                      }}
-                      className="flex-1 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
-                    >
-                      Ouvrir
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteFile(file.id, file.name);
-                      }}
-                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                      title="Supprimer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleSyncFile(file.id)}
+                        className="text-gray-500 hover:text-blue-500 transition-colors"
+                        title="Synchroniser"
+                      >
+                        <RefreshCw size={16} />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/editor/${file.id}`)}
+                        className="text-blue-500 hover:text-blue-700"
+                        title="Ouvrir"
+                      >
+                        Ouvrir
+                      </button>
+                      <button
+                        onClick={() => handleDeleteFile(file.id, file.name)}
+                        className="text-red-500 hover:text-red-700"
+                        title="Supprimer"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
 
+      {/* Boîte de dialogue de création de fichier */}
       {showNewFileDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Nouveau dessin
-            </h2>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4">Nouveau fichier</h2>
             <form onSubmit={handleCreateFile}>
               <div className="mb-4">
-                <label
-                  htmlFor="fileName"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
+                <label htmlFor="fileName" className="block text-sm font-medium text-gray-700 mb-1">
                   Nom du fichier
                 </label>
                 <input
-                  id="fileName"
                   type="text"
+                  id="fileName"
                   value={newFileName}
                   onChange={(e) => setNewFileName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Mon dessin"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Entrez un nom de fichier"
                   autoFocus
-                  required
                 />
               </div>
-              <div className="flex gap-3">
+              <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowNewFileDialog(false);
-                    setNewFileName('');
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  onClick={() => setShowNewFileDialog(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600"
                 >
                   Créer
                 </button>

@@ -1,0 +1,6 @@
+Module: Geo.ts
+Rôle: IA gouvernante évolutive
+Fonctions: Privilèges, prompts, audit, reconnaissance
+Charte: geo-charter.json
+Fondateur: spacetopodrawer / wgd379
+Version: 1.0.0

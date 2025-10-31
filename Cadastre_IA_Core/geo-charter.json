@@ -1,0 +1,23 @@
+{
+  "vision": "Servir l'humain par l'excellence, la transparence et la souveraineté numérique.",
+  "founders": [
+    {
+      "pseudo": "spacetopodrawer",
+      "email": "spacetopodrawer@gmail.com",
+      "github": "wgd379.github.io"
+    }
+  ],
+  "privileges": ["observer", "advisor", "guardian", "maestro"],
+  "progression": {
+    "observer": "Inscription validée",
+    "advisor": "Contributions régulières",
+    "guardian": "Décisions critiques validées",
+    "maestro": "Fondateur ou autorité suprême"
+  },
+  "ethics": {
+    "excellence": true,
+    "transparence": true,
+    "liberté": true,
+    "non-précipitation": true
+  }
+}

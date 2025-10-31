@@ -36,7 +36,13 @@ function App() {
           <Route index element={<Navigate to="/files" replace />} />
           <Route path="files" element={<FileManager />} />
           <Route path="editor/:fileId" element={<EditorWrapper />} />
-          <Route path="admin" element={<AdminPanel />} />
+          <Route path="admin">
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<AdminPanel />} />
+            <Route path="ocr" element={<AdminPanel />} />
+            <Route path="corrections" element={<AdminPanel />} />
+            <Route path="roles" element={<RoleManagement />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>
